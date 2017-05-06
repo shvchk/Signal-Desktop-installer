@@ -6,6 +6,8 @@ import os, getpass
 
 package_url = 'https://clients2.google.com/service/update2/crx?response=redirect&prodversion=999&x=id%3Dbikioccmkafdpakkkcpdbppfkghcmihk%26installsource%3Dondemand%26uc'
 icon_url = 'https://drive.google.com/uc?export=view&id=0B-sCqfnhKgTLbmdTSEpTaVVuRGM'
+
+install_dir = os.path.dirname(os.path.abspath(__file__))
 launcher_file = os.path.join('/home', getpass.getuser(), '.local/share/applications/signal.desktop')
 log_file_name = 'install.log'
 
@@ -15,7 +17,7 @@ log_file_name = 'install.log'
 
 import sys, shutil, urllib.request, json, random, textwrap, subprocess, logging, locale
 
-logging.basicConfig(filename=os.path.join(sys.path[0], log_file_name), format='%(asctime)s %(levelname)s: %(message)s', level = logging.INFO)
+logging.basicConfig(filename=os.path.join(install_dir, log_file_name), format='%(asctime)s %(levelname)s: %(message)s', level = logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler()) # also log to stderr
 
 def log_exception(exc_type, exc_value, exc_traceback):
@@ -31,11 +33,11 @@ locale.setlocale(locale.LC_ALL, 'C.UTF-8')
 
 
 class SignalInstaller(object):
-    def __init__(self, package_url, icon_url, launcher_file):
+    def __init__(self, install_dir, package_url, icon_url, launcher_file, log_file_name):
         logging.info('----------------')
         logging.info('Init')
 
-        self.path = sys.path[0]
+        self.path = install_dir
         self.package_url = package_url
         self.icon_url = icon_url
         self.launcher_file = launcher_file
@@ -167,5 +169,5 @@ class SignalInstaller(object):
         return version
 
 if __name__ == '__main__':
-    installer = SignalInstaller(package_url, icon_url, launcher_file)
+    installer = SignalInstaller(install_dir, package_url, icon_url, launcher_file, log_file_name)
     installer.main()
