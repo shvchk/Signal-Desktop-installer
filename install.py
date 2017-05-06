@@ -7,6 +7,7 @@ import os, getpass
 package_url = 'https://clients2.google.com/service/update2/crx?response=redirect&prodversion=999&x=id%3Dbikioccmkafdpakkkcpdbppfkghcmihk%26installsource%3Dondemand%26uc'
 icon_url = 'https://drive.google.com/uc?export=view&id=0B-sCqfnhKgTLbmdTSEpTaVVuRGM'
 launcher_file = os.path.join('/home', getpass.getuser(), '.local/share/applications/signal.desktop')
+log_file_name = 'install.log'
 
 
 # Do not make changes below this line, unless you know what you are doing
@@ -14,7 +15,7 @@ launcher_file = os.path.join('/home', getpass.getuser(), '.local/share/applicati
 
 import sys, shutil, urllib.request, json, random, textwrap, subprocess, logging, locale
 
-logging.basicConfig(filename=os.path.join(sys.path[0], 'install.log'), format='%(asctime)s %(levelname)s: %(message)s', level = logging.INFO)
+logging.basicConfig(filename=os.path.join(sys.path[0], log_file_name), format='%(asctime)s %(levelname)s: %(message)s', level = logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler()) # also log to stderr
 
 def log_exception(exc_type, exc_value, exc_traceback):
@@ -31,12 +32,17 @@ locale.setlocale(locale.LC_ALL, 'C.UTF-8')
 
 class SignalInstaller(object):
     def __init__(self, package_url, icon_url, launcher_file):
+        logging.info('----------------')
         logging.info('Init')
 
         self.path = sys.path[0]
         self.package_url = package_url
         self.icon_url = icon_url
         self.launcher_file = launcher_file
+
+        self.icon_file_name = 'signal.png'
+        self.package_file_name = 'signal.zip'
+        self.log_file_name = log_file_name
 
     def main(self):
         installed_version = self.getInstalledVersion()
@@ -45,11 +51,11 @@ class SignalInstaller(object):
         if not installed_version or latest_version > installed_version:
             logging.info('New version found, downloading')
 
-            package_file = os.path.join(self.path, 'signal.zip')
+            package_file = os.path.join(self.path, self.package_file_name)
             urllib.request.urlretrieve(self.package_url, package_file)
 
             if latest_version > installed_version:
-                self.cleanOldFiles(self.path, ['install.py', 'signal.png', 'signal.zip'])
+                self.cleanOldFiles(self.path, [os.path.basename(__file__), self.icon_file_name, self.package_file_name, self.log_file_name])
 
             self.unpack(package_file)
             os.remove(package_file)
@@ -88,7 +94,7 @@ class SignalInstaller(object):
     def createLauncher(self):
 
         logging.info('Retrieving icon')
-        icon_file = os.path.join(self.path, 'signal.png')
+        icon_file = os.path.join(self.path, self.icon_file_name)
         urllib.request.urlretrieve(self.icon_url, icon_file)
 
         logging.info('Creating launcher')
@@ -111,7 +117,7 @@ class SignalInstaller(object):
 
         job = '''\
                     # Signal Desktop updater
-                    %(minute)i */6 * * * %(path)s
+                    %(minute)i */6 * * * python3 %(path)s
                 ''' % { 'minute': random.randint(0,59), 'path': os.path.abspath(__file__) }
 
         os.system('(crontab -l 2>/dev/null; echo "%s") | crontab -' % textwrap.dedent(job) )
