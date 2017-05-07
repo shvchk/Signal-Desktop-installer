@@ -130,8 +130,8 @@ class SignalInstaller(object):
 
         job = '''\
                     # Signal Desktop updater
-                    %(minute)i */6 * * * python3 %(path)s
-                ''' % { 'minute': random.randint(0,59), 'path': os.path.abspath(__file__) }
+                    %(minute)i */6 * * * /usr/bin/env python3 %(path)s
+                ''' % { 'minute': random.randint(0,59), 'path': os.path.join(self.path, os.path.basename(__file__)) }
 
         os.system('(crontab -l 2>/dev/null; echo "%s") | crontab -' % textwrap.dedent(job) )
 
@@ -176,7 +176,7 @@ class SignalInstaller(object):
             except Exception:
                 logging.error('Can\'t read manifest ' + file)
 
-        logging.info('Installed version is ' + version)
+        logging.info('Installed version is ' + version or 'none')
         return version
 
 if __name__ == '__main__':
