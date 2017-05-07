@@ -14,7 +14,7 @@ Let's do it the easy and automated way:
 
     `wget https://raw.githubusercontent.com/shvchk/Signal-Desktop-installer/master/install.py && python3 install.py`
 
-    This will download Signal Desktop package, unpack it to the current directory, create a .desktop file and a cron job for updating.
+    This will download Signal Desktop package, unpack it to the current directory, create a .desktop file and a cron job for updating (all these could be changed via [command line arguments](#command-line-arguments)).
 
 That's it! Signal Desktop launcher should now appear in the programs list.
 
@@ -23,6 +23,19 @@ That's it! Signal Desktop launcher should now appear in the programs list.
 Feel free to report installer bugs to this repository issue queue or/and contribute with a pull requests.
 
 Don't forget, though, that this kind of setup is not supported by Open Whisper Systems. For further info on Signal Desktop (bug reporting, contributing, etc.) please use [official Signal Desktop repository](https://github.com/WhisperSystems/Signal-Desktop#signal-desktop).
+
+---
+
+### Command line arguments
+
+**-d, --install-dir**  
+Installation directory. Will be created if nonexistent.
+
+**--no-launcher**  
+Don't create a .desktop file
+
+**--no-cron**  
+Don't create a cron job for auto-updating
 
 ---
 

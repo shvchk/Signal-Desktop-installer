@@ -15,7 +15,7 @@ log_file_name = 'install.log'
 # Do not make changes below this line, unless you know what you are doing
 # ------------------------------------------------------------------------------
 
-import sys, shutil, urllib.request, json, random, textwrap, subprocess, logging, locale
+import sys, shutil, urllib.request, json, random, textwrap, subprocess, logging, locale, argparse
 
 logging.basicConfig(filename=os.path.join(install_dir, log_file_name), format='%(asctime)s %(levelname)s: %(message)s', level = logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler()) # also log to stderr
@@ -33,7 +33,7 @@ locale.setlocale(locale.LC_ALL, 'C.UTF-8')
 
 
 class SignalInstaller(object):
-    def __init__(self, install_dir, package_url, icon_url, launcher_file, log_file_name):
+    def __init__(self, install_dir, package_url, icon_url, launcher_file, log_file_name, cron):
         logging.info('----------------')
         logging.info('Init')
 
@@ -41,12 +41,20 @@ class SignalInstaller(object):
         self.package_url = package_url
         self.icon_url = icon_url
         self.launcher_file = launcher_file
+        self.cron = cron
 
         self.icon_file_name = 'signal.png'
         self.package_file_name = 'signal.zip'
         self.log_file_name = log_file_name
 
     def main(self):
+
+        if self.path != os.path.dirname(os.path.abspath(__file__)):
+            if not os.path.exists(self.path):
+                os.makedirs(self.path, exist_ok=True)
+
+            shutil.copy(os.path.abspath(__file__), self.path)
+
         installed_version = self.getInstalledVersion()
         latest_version = self.getLatestVersion()
 
@@ -63,8 +71,11 @@ class SignalInstaller(object):
             os.remove(package_file)
 
             if not installed_version:
-                self.createLauncher()
-                self.createCronJob()
+                if self.launcher_file:
+                    self.createLauncher()
+
+                if self.cron:
+                    self.createCronJob()
 
         logging.info('Done')
 
@@ -169,5 +180,16 @@ class SignalInstaller(object):
         return version
 
 if __name__ == '__main__':
-    installer = SignalInstaller(install_dir, package_url, icon_url, launcher_file, log_file_name)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--install-dir', '-d', help='Installation directory. Will be created if nonexistent.')
+    parser.add_argument('--no-launcher', help='Don\'t create a .desktop file', action='store_true')
+    parser.add_argument('--no-cron', help='Don\'t create a cron job for auto-updating', action='store_true')
+    args = parser.parse_args()
+
+    install_dir = args.install_dir or install_dir
+    launcher_file = None if args.no_launcher else launcher_file
+    cron = not args.no_cron
+
+    installer = SignalInstaller(install_dir, package_url, icon_url, launcher_file, log_file_name, cron)
     installer.main()
