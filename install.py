@@ -15,7 +15,7 @@ log_file_name = 'install.log'
 # Do not make changes below this line, unless you know what you are doing
 # ------------------------------------------------------------------------------
 
-import sys, shutil, urllib.request, json, random, textwrap, subprocess, logging, locale, argparse
+import sys, shutil, urllib.request, json, random, textwrap, logging, locale, argparse, zipfile
 
 logging.basicConfig(filename=os.path.join(install_dir, log_file_name), format='%(asctime)s %(levelname)s: %(message)s', level = logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler()) # also log to stderr
@@ -67,6 +67,7 @@ class SignalInstaller(object):
             if latest_version > installed_version:
                 self.cleanOldFiles(self.path, [os.path.basename(__file__), self.icon_file_name, self.package_file_name, self.log_file_name])
 
+
             self.unpack(package_file)
             os.remove(package_file)
 
@@ -80,29 +81,11 @@ class SignalInstaller(object):
         logging.info('Done')
 
     def unpack(self, file):
-        logging.info('Unpacking')
+        logging.info('Unpacking ' + file)
 
-        debug = logging.getLogger().isEnabledFor(logging.DEBUG)
-        unzip_cmd = ['unzip', '' if debug else '-q', file, '-d', self.path]
+        with zipfile.ZipFile(file) as z:
+            z.extractall(self.path)
 
-        try:
-            output = subprocess.check_output(unzip_cmd,
-                                            stderr = subprocess.STDOUT,
-                                            universal_newlines = True,
-                                            timeout = 10)
-
-            if output:
-                logging.info(output)
-
-        except subprocess.TimeoutExpired:
-            logging.error('Timeout while unpacking, command was "%s"' % ' '.join(unzip_cmd))
-
-        except subprocess.CalledProcessError as e:                                                                                                   
-            if e.returncode == 1:
-                logging.warning('Unpacked successfully, but there were some warnings:')
-                logging.warning(e.output)
-            else:
-                logging.error(e.output)
 
     def createLauncher(self):
 
