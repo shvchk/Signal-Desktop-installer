@@ -132,12 +132,12 @@ class SignalInstaller(object):
 
     def getLatestVersion(self):
         version = ''
-        tags_url = 'https://api.github.com/repos/WhisperSystems/Signal-Desktop/tags'
+        tags_url = 'https://api.github.com/repos/WhisperSystems/Signal-Desktop/releases/latest'
 
         logging.info('Checking latest version')
         with urllib.request.urlopen(tags_url) as r:
             tags = json.loads(r.read().decode('utf-8'))
-            version = tags[0]['name']
+            version = tags['tag_name']
             version = ''.join(filter(lambda x: x.isdigit() or x == '.', version)) # remove everything except digits and dots
 
         logging.info('Latest version is ' + version)
