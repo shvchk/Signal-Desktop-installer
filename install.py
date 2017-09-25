@@ -58,7 +58,7 @@ class SignalInstaller(object):
         installed_version = self.getInstalledVersion()
         latest_version = self.getLatestVersion()
 
-        if not installed_version or latest_version > installed_version:
+        if not installed_version or (latest_version > installed_version and latest_version[0] == '0'):
             logging.info('New version found, downloading')
 
             package_file = os.path.join(self.path, self.package_file_name)
