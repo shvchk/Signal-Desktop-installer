@@ -13,6 +13,7 @@ Let's do it the easy and automated way:
     - **[Node.js and NPM](https://nodejs.org/en/download/package-manager/)**
     - **NW.js:** `sudo npm install -g nw` (global) or `npm install nw` (current user)
 
+**User installation:**
 2. **Create app folder and go into it:** `mkdir -p ~/apps/Signal && cd $_`
 
 3. **Get and run install script:**
@@ -21,6 +22,15 @@ Let's do it the easy and automated way:
 
     This will download Signal Desktop package, unpack it to the current directory, create a .desktop file and a cron job for updating (all these could be changed via [command line arguments](#command-line-arguments)).
 
+**System installation:**
+
+_(Installs signal system-wide)_
+2. **Get and run install script:**
+
+    `wget https://raw.githubusercontent.com/shvchk/Signal-Desktop-installer/master/install.py && sudo python3 install.py`
+
+    This will download Signal Desktop package, unpack it to `/opt`, create a .desktop file and a cron job for updating (all these could be changed via [command line arguments](#command-line-arguments)).
+   
 That's it! Signal Desktop launcher should now appear in the programs list.
 
 ---

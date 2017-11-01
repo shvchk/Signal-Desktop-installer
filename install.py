@@ -1,24 +1,40 @@
 #!/usr/bin/env python3
 
-import os, getpass
+import argparse
+import json
+import locale
+import logging
+import os
+import random
+import shutil
+import sys
+import textwrap
+import urllib.request
+import zipfile
 
 # You can change these settings to your own preference
 
-package_url = 'https://clients2.google.com/service/update2/crx?response=redirect&prodversion=999&x=id%3Dbikioccmkafdpakkkcpdbppfkghcmihk%26installsource%3Dondemand%26uc'
+package_url = 'https://clients2.google.com/service/update2/crx?response=redirect&prodversion=999&x=id' \
+              '%3Dbikioccmkafdpakkkcpdbppfkghcmihk%26installsource%3Dondemand%26uc '
 icon_url = 'https://drive.google.com/uc?export=view&id=0B-sCqfnhKgTLbmdTSEpTaVVuRGM'
 
-install_dir = os.path.dirname(os.path.abspath(__file__))
-launcher_file = os.path.join('/home', getpass.getuser(), '.local/share/applications/signal.desktop')
+install_dir_user = os.path.dirname(os.path.abspath(__file__))
+install_dir_root = "/opt/signal"
+launcher_file_user = os.path.abspath(os.path.join(os.path.expanduser("~"), '.local/share/applications/signal.desktop'))
+launcher_file_root = "/usr/share/applications/signal.desktop"
 log_file_name = 'install.log'
-
 
 # Do not make changes below this line, unless you know what you are doing
 # ------------------------------------------------------------------------------
 
-import sys, shutil, urllib.request, json, random, textwrap, logging, locale, argparse, zipfile
+root = os.getuid() == 0
+launcher_file = launcher_file_root if root else launcher_file_user
+install_dir = install_dir_root if root else install_dir_user
 
-logging.basicConfig(filename=os.path.join(install_dir, log_file_name), format='%(asctime)s %(levelname)s: %(message)s', level = logging.INFO)
-logging.getLogger().addHandler(logging.StreamHandler()) # also log to stderr
+logging.basicConfig(filename=os.path.join(install_dir, log_file_name), format='%(asctime)s %(levelname)s: %(message)s',
+                    level=logging.INFO)
+logging.getLogger().addHandler(logging.StreamHandler())  # also log to stderr
+
 
 def log_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
@@ -27,25 +43,30 @@ def log_exception(exc_type, exc_value, exc_traceback):
 
     logging.error('Uncaught exception', exc_info=(exc_type, exc_value, exc_traceback))
 
+
 sys.excepthook = log_exception
 
 locale.setlocale(locale.LC_ALL, 'C.UTF-8')
 
 
 class SignalInstaller(object):
-    def __init__(self, install_dir, package_url, icon_url, launcher_file, log_file_name, cron):
+    def __init__(self, install_dir_, package_url_, icon_url_, launcher_file_, log_file_name_, cron_):
         logging.info('----------------')
+        if root:
+            logging.info("Detected installation as root")
+        else:
+            logging.info("Detected installation as user")
         logging.info('Init')
 
-        self.path = install_dir
-        self.package_url = package_url
-        self.icon_url = icon_url
-        self.launcher_file = launcher_file
-        self.cron = cron
+        self.path = install_dir_
+        self.package_url = package_url_
+        self.icon_url = icon_url_
+        self.launcher_file = launcher_file_
+        self.cron = cron_
 
         self.icon_file_name = 'signal.png'
         self.package_file_name = 'signal.zip'
-        self.log_file_name = log_file_name
+        self.log_file_name = log_file_name_
 
     def main(self):
 
@@ -55,8 +76,8 @@ class SignalInstaller(object):
 
             shutil.copy(os.path.abspath(__file__), self.path)
 
-        installed_version = self.getInstalledVersion()
-        latest_version = self.getLatestVersion()
+        installed_version = self.get_installed_version()
+        latest_version = self.get_latest_version()
 
         if not installed_version or (latest_version > installed_version and latest_version[0] == '0'):
             logging.info('New version found, downloading')
@@ -65,18 +86,19 @@ class SignalInstaller(object):
             urllib.request.urlretrieve(self.package_url, package_file)
 
             if latest_version > installed_version:
-                self.cleanOldFiles(self.path, [os.path.basename(__file__), self.icon_file_name, self.package_file_name, self.log_file_name])
-
+                self.clean_old_files(self.path,
+                                     [os.path.basename(__file__), self.icon_file_name, self.package_file_name,
+                                      self.log_file_name])
 
             self.unpack(package_file)
             os.remove(package_file)
 
             if not installed_version:
                 if self.launcher_file:
-                    self.createLauncher()
+                    self.create_launcher()
 
                 if self.cron:
-                    self.createCronJob()
+                    self.create_cron_job()
 
         logging.info('Done')
 
@@ -86,8 +108,7 @@ class SignalInstaller(object):
         with zipfile.ZipFile(file) as z:
             z.extractall(self.path)
 
-
-    def createLauncher(self):
+    def create_launcher(self):
 
         logging.info('Retrieving icon')
         icon_file = os.path.join(self.path, self.icon_file_name)
@@ -103,22 +124,25 @@ class SignalInstaller(object):
                         StartupNotify=true
                         Terminal=false
                         Type=Application
-                    ''' % { 'path': self.path, 'icon': icon_file }
+                    ''' % {'path': self.path, 'icon': icon_file}
 
         with open(self.launcher_file, 'w') as f:
             f.write(textwrap.dedent(launcher))
 
-    def createCronJob(self):
+    def create_cron_job(self):
         logging.info('Creating cron job')
 
         job = '''\
                     # Signal Desktop updater
                     %(minute)i */6 * * * /usr/bin/env python3 %(path)s
-                ''' % { 'minute': random.randint(0,59), 'path': os.path.join(self.path, os.path.basename(__file__)) }
+                ''' % {'minute': random.randint(0, 59), 'path': os.path.join(self.path, os.path.basename(__file__))}
 
-        os.system('(crontab -l 2>/dev/null; echo "%s") | crontab -' % textwrap.dedent(job) )
+        os.system('(crontab -l 2>/dev/null; echo "%s") | crontab -' % textwrap.dedent(job))
 
-    def cleanOldFiles(self, directory, exceptions = []):
+    @staticmethod
+    def clean_old_files(directory, exceptions=None):
+        if exceptions is None:
+            exceptions = []
         logging.info('Cleaning ' + directory)
         for f in os.listdir(directory):
             if f not in exceptions:
@@ -130,20 +154,21 @@ class SignalInstaller(object):
                 elif os.path.isdir(f):
                     shutil.rmtree(f)
 
-    def getLatestVersion(self):
-        version = ''
+    @staticmethod
+    def get_latest_version():
         tags_url = 'https://api.github.com/repos/WhisperSystems/Signal-Desktop/releases/latest'
 
         logging.info('Checking latest version')
         with urllib.request.urlopen(tags_url) as r:
             tags = json.loads(r.read().decode('utf-8'))
             version = tags['tag_name']
-            version = ''.join(filter(lambda x: x.isdigit() or x == '.', version)) # remove everything except digits and dots
+            version = ''.join(
+                filter(lambda x: x.isdigit() or x == '.', version))  # remove everything except digits and dots
 
         logging.info('Latest version is ' + version)
         return version
 
-    def getInstalledVersion(self):
+    def get_installed_version(self):
         version = ''
         file = os.path.join(self.path, 'manifest.json')
 
@@ -156,14 +181,14 @@ class SignalInstaller(object):
                     if 'version' in manifest:
                         version = manifest['version']
 
-            except Exception:
+            except OSError or IOError:
                 logging.error('Can\'t read manifest ' + file)
 
         logging.info('Installed version is ' + version or 'none')
         return version
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--install-dir', '-d', help='Installation directory. Will be created if nonexistent.')
     parser.add_argument('--no-launcher', help='Don\'t create a .desktop file', action='store_true')
@@ -171,6 +196,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     install_dir = args.install_dir or install_dir
+    if root and args.install_dir is not None:
+        os.mkdir(install_dir_root)
     launcher_file = None if args.no_launcher else launcher_file
     cron = not args.no_cron
 
